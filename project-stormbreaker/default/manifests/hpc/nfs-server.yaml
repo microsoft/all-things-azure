@@ -1,0 +1,65 @@
+apiVersion: apps/v1  
+kind: StatefulSet
+metadata:
+  name: nfs-server  
+spec:
+  serviceName: nfs-server-service
+  replicas: 1  
+  selector:  
+    matchLabels:  
+      role: nfs-server  
+  template:  
+    metadata:  
+      labels:  
+        role: nfs-server  
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: agentpool
+                operator: In
+                values:
+                - adcirchpc
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+      - name: nfs-server  
+        image: gcr.io/google_containers/volume-nfs:0.8
+        # resources:
+        #   requests:
+        #     cpu: 2
+        #     memory: 8Gi
+        #   limits:
+        #     cpu: 2
+        #     memory: 8Gi
+        ports:
+          - name: nfs
+            containerPort: 2049
+          - name: mountd
+            containerPort: 20048
+          - name: rpcbind
+            containerPort: 111
+        securityContext:
+          privileged: true
+        command: ["/bin/entrypoint.sh"]
+        args: ["emptydir", "nvme"]
+        volumeMounts: 
+          - name: emptydir
+            mountPath: /exports/emptydir
+          # configmap
+          - name: nfs-config
+            mountPath: /bin/entrypoint.sh
+            readOnly: true
+            subPath: entrypoint.sh
+      volumes:
+        - name: emptydir
+          emptyDir: 
+           medium: Memory
+           sizeLimit: 10Gi
+        # configmap
+        - name: nfs-config
+          configMap:
+            defaultMode: 0700
+            name: cm-nfs-config

@@ -1,0 +1,7 @@
+/* The prefix to use for all resource names. */
+
+/* The Azure region to deploy resources to. */
+location       = "westus3"
+
+/* The username for the administrator account on the virtual machines. */
+admin_username = "gbbadmin"

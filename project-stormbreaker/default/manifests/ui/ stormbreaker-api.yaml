@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stormbreaker-backend-service
+spec:
+  selector:
+    app: stormbreaker-backend
+  ports:
+    - protocol: TCP
+      port: 8001
+      targetPort: 8001
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: stormbreaker-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stormbreaker-backend
+  template:
+    metadata:
+      labels:
+        app: stormbreaker-backend
+        azure.workload.identity/use: "true"
+      #annotations:
+      #  azure.workload.identity/inject-proxy-sidecar: "true"
+    spec:
+      serviceAccount: workload-identity-sa
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: agentpool
+                    operator: In
+                    values:
+                      - system
+      containers:
+        - name: stormbreaker-backend
+          image: stormbreakeracrdc.azurecr.io/misc/backend:1.3
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8001
+          envFrom:
+            - configMapRef:
+                name: env-config
+            - secretRef:
+                name: django-secret
+          command: ["python", "manage.py", "runserver", "0.0.0.0:8001"]
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+            requests:
+              cpu: "1"
+              memory: 1Gi

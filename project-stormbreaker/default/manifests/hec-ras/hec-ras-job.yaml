@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hec-ras-job
+  namespace: hec-ras
+spec:
+  parallelism: 1 # how many pods to run in parallel
+  completions: 1 # how many pods to run to completion
+  backoffLimit: 4 # how many times to retry failed pods
+  template: # the pod template
+    spec:
+      tolerations:
+        - key: layer
+          operator: Equal
+          value: hec-ras
+          effect: NoSchedule
+      containers:
+        - image: stormbreakeracrdc.azurecr.io/hec-ras-6.1-ubi-minimal:8.9-1108.b
+          env:
+          - name: HECRAS_USER
+            value: calgary
+          - name: HECRAS_DATADIR
+            value: Muncie
+          name: hec-ras
+          command: ["/sim/run.sh", "-x", "unsteady"]
+          volumeMounts:
+            - name: input
+              mountPath: "/mnt/input"
+              readOnly: false
+            - name: output
+              mountPath: "/mnt/output"
+              readOnly: false
+      volumes:
+        - name: input
+          persistentVolumeClaim:
+            claimName: pvc-input
+        - name: output
+          persistentVolumeClaim:
+            claimName: pvc-output
+      restartPolicy: Never # the pod restart policy

@@ -1,0 +1,45 @@
+@startuml
+title Task Creation
+
+actor User
+participant "REACT FRONTEND" as FRONTEND
+participant "DJANGO BACKEND" as BACKEND
+participant "Service Bus Queue:\nStormbreaker-Dispatch" as SB_Dispatch
+participant "KEDA:\nservicebus-dispatcher" as KEDA_Dispatcher
+participant "Kubernetes API" as K8S_API
+participant "Service Bus Queue:\nStormbreaker-Running" as SB_Running
+
+participant "Volcano Master Job" as VolcanoMasterJob
+participant "Blob Storage:\noutput" as BlobStorage
+participant "KEDA:\nservicebus-complete" as KEDA_Complete
+
+
+
+autonumber
+hide footbox
+
+User -> FRONTEND: creates task
+FRONTEND -> BACKEND: sends task to BACKEND
+BACKEND -> SB_Dispatch: sends task to queue
+
+KEDA_Dispatcher -> SB_Dispatch: removes task from queue
+
+KEDA_Dispatcher -> K8S_API: creates volcano job
+KEDA_Dispatcher -> SB_Running: adds task to running queue
+
+K8S_API -> VolcanoMasterJob: starts job
+VolcanoMasterJob -> K8S_API: starts job
+
+loop
+FRONTEND -> SB_Running: reads tasks
+FRONTEND -> User: shows running tasks
+end
+
+VolcanoMasterJob -> BlobStorage: writes output files
+VolcanoMasterJob -> BlobStorage: mark the job as completed
+
+KEDA_Complete -> BlobStorage: reads completed jobs
+KEDA_Complete -> SB_Running: removes task from running queue
+
+@enduml
+

@@ -1,0 +1,36 @@
+# nvme
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-scratchpad
+spec:
+  capacity:
+    storage: 1000Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    server: nfs-server.privatelink.azurecr.io
+    path: "/nvme"
+  mountOptions:
+    - nfsvers=4.1
+    - nconnect=16
+    - nolock
+    - noatime
+    - norelatime
+    - nodiratime
+    - rsize=1048576,wsize=1048576
+    - async
+    - fsc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: scratchpad
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: ""
+  resources:
+    requests:
+      storage: 1000Gi
+  volumeName: pv-scratchpad

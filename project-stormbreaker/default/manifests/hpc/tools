@@ -1,0 +1,4 @@
+apt install -y linux-tools-5.15.0-1057-azure linux-cloud-tools-5.15.0-1057-azure
+perf record -e cpu-cycles -a  
+perf report
+

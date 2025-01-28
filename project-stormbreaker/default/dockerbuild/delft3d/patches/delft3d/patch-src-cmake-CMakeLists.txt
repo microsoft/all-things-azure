@@ -1,0 +1,31 @@
+--- src/cmake/CMakeLists.txt.orig	2024-08-21 22:21:06.364372911 +0000
++++ src/cmake/CMakeLists.txt	2024-08-21 22:23:56.377177073 +0000
+@@ -5,6 +5,9 @@ project(CMake)
+ # enable project files grouping by folders
+ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+ 
++# add delft3d local directory
++include_directories(/home/delft3d/include)
++
+ if (UNIX)
+     message(STATUS "Configuring in unix")
+     include(linux_scripts.cmake)
+@@ -49,6 +52,17 @@ if (UNIX)
+     set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} ${compiler_flags}")
+ endif(UNIX)
+ 
++# Patch for IntelLLVM to set C and C++ standards
++if (CMAKE_C_COMPILER_ID STREQUAL "IntelLLVM")
++    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu89")
++    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++98")
++endif()
++
++# Apply global compile options but only to C/C++ languages
++add_compile_options($<$<COMPILE_LANGUAGE:C>:-std=gnu89>)
++add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-std=gnu++98>)
++add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-narrowing>)
++
+ # Set available build configurations for the .sln file
+ set (CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)
+ 
+

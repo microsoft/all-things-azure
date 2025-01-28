@@ -1,0 +1,26 @@
+#PBS -q B30
+#PBS -l nodes=1:ppn=1
+#PBS -l walltime=12:00:00
+#PBS -A guam
+
+module load adcirc/52.30.00/intel.2018
+
+echo "================== nodes ===================="
+cat $PBS_NODEFILE
+echo "================= job info  ================="
+echo "Date:   $(date)"
+echo "Job ID: $PBS_JOBID"
+echo "Queue:  $PBS_QUEUE"
+echo "Cores:  $PBS_NP"
+echo "mpirun: $(which mpirun)"
+echo
+
+cd $PBS_O_WORKDIR
+
+adcprep --np 24 --partmesh
+adcprep --np 24 --prepall
+
+echo
+echo "================== done ====================="
+echo "Date:   $(date)"
+echo "retval: $retval"

@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-input
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 1Pi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: pvc-input
+    namespace: default
+  csi:
+    driver: blob.csi.azure.com
+    volumeAttributes:
+      containerName: input
+      protocol: nfs
+      resourceGroup: rg-dc-gbb
+      storageAccount: stormbreakerstorgbb
+    volumeHandle: account-name_container-name
+  mountOptions:
+  - nconnect=4
+  - nolock
+  - noatime
+  - rsize=32768,wsize=32768
+  - async
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: azureblob-nfs-premium
+  volumeMode: Filesystem
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-output
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 1Pi
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: pvc-output
+    namespace: default
+  csi:
+    driver: blob.csi.azure.com
+    volumeAttributes:
+      containerName: output
+      protocol: nfs
+      resourceGroup: rg-dc-gbb
+      storageAccount: stormbreakerstorgbb
+    volumeHandle: stormbreakerstorgbb-output
+  mountOptions:
+  - nconnect=16
+  - nolock
+  - noatime
+  - rsize=32768,wsize=32768
+  - async
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: azureblob-nfs-premium
+  volumeMode: Filesystem

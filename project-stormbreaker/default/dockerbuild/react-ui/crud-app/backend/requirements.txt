@@ -1,0 +1,6 @@
+django
+djangorestframework
+django-cors-headers
+azure-servicebus
+azure-identity
+python-dotenv

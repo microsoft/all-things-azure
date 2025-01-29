@@ -1,0 +1,111 @@
+FROM stormbreakeracrdc.azurecr.io/hpccm:base-4
+
+# Install dependencies  
+ENV DEBIAN_FRONTEND=noninteractive 
+RUN  echo "America/New_York" > /etc/timezone \
+    && apt-get update && apt-get install -y \
+    autoconf \
+    automake \
+    build-essential \
+    cmake \
+    g++ \
+    gcc \
+    gfortran \
+    libcurl4-gnutls-dev \
+    libtool \
+    libxml2-dev \
+    m4 \
+    make \
+    openssh-server \
+    tzdata \
+    unzip \
+    vim \
+    zlib1g-dev \
+    wget
+
+# Set environment variables for compilers  
+ENV FC=gfortran
+ENV CC=gcc
+ENV LD_LIBRARY_PATH=/home/stormbreaker/install/lib
+ENV MAKEFLAGS="-j $(nproc)"
+
+# Create necessary directories  
+RUN mkdir -p /home/stormbreaker/src \
+    && mkdir -p /home/stormbreaker/install
+WORKDIR /home/stormbreaker/src
+
+# Download sources  
+RUN wget https://github.com/zlib-ng/zlib-ng/archive/2.1.4.tar.gz
+RUN wget https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.11/src/hdf5-1.10.11.tar.gz
+RUN wget https://github.com/Unidata/netcdf-c/archive/refs/tags/v4.9.2.tar.gz
+RUN wget https://downloads.unidata.ucar.edu/netcdf-fortran/4.6.1/netcdf-fortran-4.6.1.tar.gz
+RUN wget https://github.com/adcirc/adcirc/releases/download/v55.02/adcirc_v55.02.tar.gz
+
+# Install zlib
+RUN tar -xzvf 2.1.4.tar.gz && \
+    cd zlib-ng-2.1.4 && \
+    ./configure && \
+    make test && \
+    make install prefix=/home/stormbreaker/install && \
+    cd ../
+
+# Install hdf5  
+RUN tar -xzvf hdf5-1.10.11.tar.gz && \
+    cd hdf5-1.10.11 && \
+    ./configure -with-zlib=/home/stormbreaker/install -prefix=/home/stormbreaker/install -enable-fortran && \
+    make && \
+    make check && \
+    make install && \
+    cd ../
+
+# Install netcdf c library  
+RUN tar -xzvf v4.9.2.tar.gz && \
+    cd netcdf-c-4.9.2 && \
+    export CPPFLAGS='-I/home/stormbreaker/install/include' && \
+    export LDFLAGS='-L/home/stormbreaker/install/lib' && \
+    ./configure -prefix=/home/stormbreaker/install --disable-dap && \
+    make && \
+    make check && \
+    make install && \
+    cd ../
+
+#########################
+# install netcdf fortran library
+RUN export CPPFLAGS='-I/home/stormbreaker/install/include' \
+    && export LDFLAGS='-L/home/stormbreaker/install/lib -lnetcdf' \
+    && export LD_LIBRARY_PATH='/home/stormbreaker/install/lib' \
+    && tar -xzvf netcdf-fortran-4.6.1.tar.gz \
+    && cd netcdf-fortran-4.6.1 \
+    && ./configure --prefix=/home/stormbreaker/install \
+    && make \
+    && make check \
+    && make install \
+    && cd ../
+
+# Download and install adcirc  
+ENV LD_LIBRARY_PATH=/home/stormbreaker/install/lib
+ENV NETCDF=enable
+ENV NETCDF4=enable
+ENV NETCDF4_COMPRESSION=enable
+ENV NETCDFHOME=/home/stormbreaker/install
+ENV CMAKE_C_FLAGS_RELEASE="-O3 -march=znver3"
+RUN tar xvzf adcirc_v55.02.tar.gz\
+    && mkdir -p adcirc_v55.02/build\
+    && cd adcirc_v55.02/build\
+    && cmake .. \
+	-DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_ADCIRC=ON    \
+	-DBUILD_PADCIRC=ON   \
+	-DBUILD_ADCSWAN=ON   \
+	-DBUILD_PADCSWAN=ON  \
+	-DBUILD_ADCPREP=ON   \
+	-DBUILD_UTILITIES=ON \
+	-DBUILD_ASWIP=ON     \
+	-DBUILD_SWAN=ON      \
+	-DBUILD_PUNSWAN=ON   \
+	-DENABLE_OUTPUT_NETCDF=ON \
+	-DNETCDFHOME=/home/stormbreaker/install \
+    && make install
+
+# Set the default command for the image  
+CMD ["bash"]

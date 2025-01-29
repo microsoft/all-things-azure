@@ -1,0 +1,159 @@
+# BASE IMAGE FOR ADCIRC: 4
+# Building:
+#   1. Using podman
+#      $ hpccm --recipe mpi_bandwidth.py > Dockerfile
+#      $ sudo podman build --format docker -t base -f Dockerfile .
+# 
+
+FROM ubuntu:22.04 AS build
+
+# GNU compiler
+RUN apt-get update -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        g++ \
+        gcc \
+        gfortran && \
+    rm -rf /var/lib/apt/lists/*
+
+# Mellanox OFED version 5.6-2.0.9.0
+RUN apt-get update -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        ca-certificates \
+        gnupg \
+        wget && \
+    rm -rf /var/lib/apt/lists/*
+RUN wget -qO - https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox | apt-key add - && \
+    mkdir -p /etc/apt/sources.list.d && wget -q -nc --no-check-certificate -P /etc/apt/sources.list.d https://linux.mellanox.com/public/repo/mlnx_ofed/5.6-2.0.9.0/ubuntu22.04/mellanox_mlnx_ofed.list && \
+    apt-get update -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        ibverbs-providers \
+        ibverbs-utils \
+        libibmad-dev \
+        libibmad5 \
+        libibumad-dev \
+        libibumad3 \
+        libibverbs-dev \
+        libibverbs1 \
+        librdmacm-dev \
+        librdmacm1 && \
+    rm -rf /var/lib/apt/lists/*
+
+# UCX version 1.15.0
+RUN apt-get update -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        binutils-dev \
+        file \
+        libnuma-dev \
+        make \
+        wget && \
+    rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /var/tmp && wget -q -nc --no-check-certificate -P /var/tmp https://github.com/openucx/ucx/releases/download/v1.15.0/ucx-1.15.0.tar.gz && \
+    mkdir -p /var/tmp && tar -x -f /var/tmp/ucx-1.15.0.tar.gz -C /var/tmp -z && \
+    cd /var/tmp/ucx-1.15.0 &&   ./configure --prefix=/usr/local/ucx --disable-assertions --disable-debug --disable-doxygen-doc --disable-logging --disable-params-check --enable-optimizations --without-cuda && \
+    make -j$(nproc) && \
+    make -j$(nproc) install && \
+    rm -rf /var/tmp/ucx-1.15.0 /var/tmp/ucx-1.15.0.tar.gz
+ENV CPATH=/usr/local/ucx/include:$CPATH \
+    LD_LIBRARY_PATH=/usr/local/ucx/lib:$LD_LIBRARY_PATH \
+    LIBRARY_PATH=/usr/local/ucx/lib:$LIBRARY_PATH \
+    PATH=/usr/local/ucx/bin:$PATH
+
+# SLURM PMI2 version 21.08.8
+RUN apt-get update -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        bzip2 \
+        file \
+        make \
+        perl \
+        tar \
+        wget && \
+    rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /var/tmp && wget -q -nc --no-check-certificate -P /var/tmp https://download.schedmd.com/slurm/slurm-21.08.8.tar.bz2 && \
+    mkdir -p /var/tmp && tar -x -f /var/tmp/slurm-21.08.8.tar.bz2 -C /var/tmp -j && \
+    cd /var/tmp/slurm-21.08.8 &&   ./configure --prefix=/usr/local/slurm-pmi2 && \
+    cd /var/tmp/slurm-21.08.8 && \
+    make -C contribs/pmi2 install && \
+    rm -rf /var/tmp/slurm-21.08.8 /var/tmp/slurm-21.08.8.tar.bz2
+
+# OpenMPI version 4.1.6
+RUN apt-get update -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        bzip2 \
+        file \
+        hwloc \
+        libnuma-dev \
+        make \
+        openssh-client \
+        perl \
+        tar \
+        wget && \
+    rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /var/tmp && wget -q -nc --no-check-certificate -P /var/tmp https://www.open-mpi.org/software/ompi/v4.1/downloads/openmpi-4.1.6.tar.bz2 && \
+    mkdir -p /var/tmp && tar -x -f /var/tmp/openmpi-4.1.6.tar.bz2 -C /var/tmp -j && \
+    cd /var/tmp/openmpi-4.1.6 &&   ./configure --prefix=/usr/local/openmpi --disable-getpwuid --enable-orterun-prefix-by-default --with-pmi=/usr/local/slurm-pmi2 --with-ucx=/usr/local/ucx --without-cuda --without-verbs && \
+    make -j$(nproc) && \
+    make -j$(nproc) install && \
+    rm -rf /var/tmp/openmpi-4.1.6 /var/tmp/openmpi-4.1.6.tar.bz2
+ENV LD_LIBRARY_PATH=/usr/local/openmpi/lib:$LD_LIBRARY_PATH \
+    PATH=/usr/local/openmpi/bin:$PATH
+
+RUN wget -q -nc --no-check-certificate -P /var/tmp https://hpc-tutorials.llnl.gov/mpi/examples/mpi_bandwidth.c && \
+    mpicc -o /usr/local/bin/mpi_bandwidth /var/tmp/mpi_bandwidth.c
+
+FROM ubuntu:22.04
+
+# GNU compiler runtime
+RUN apt-get update -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        libgfortran5 \
+        libgomp1 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Mellanox OFED version 5.6-2.0.9.0
+RUN apt-get update -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        ca-certificates \
+        gnupg \
+        wget && \
+    rm -rf /var/lib/apt/lists/*
+RUN wget -qO - https://www.mellanox.com/downloads/ofed/RPM-GPG-KEY-Mellanox | apt-key add - && \
+    mkdir -p /etc/apt/sources.list.d && wget -q -nc --no-check-certificate -P /etc/apt/sources.list.d https://linux.mellanox.com/public/repo/mlnx_ofed/5.6-2.0.9.0/ubuntu22.04/mellanox_mlnx_ofed.list && \
+    apt-get update -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        ibverbs-providers \
+        ibverbs-utils \
+        libibmad-dev \
+        libibmad5 \
+        libibumad-dev \
+        libibumad3 \
+        libibverbs-dev \
+        libibverbs1 \
+        librdmacm-dev \
+        librdmacm1 && \
+    rm -rf /var/lib/apt/lists/*
+
+# UCX
+RUN apt-get update -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        libbinutils && \
+    rm -rf /var/lib/apt/lists/*
+COPY --from=build /usr/local/ucx /usr/local/ucx
+ENV CPATH=/usr/local/ucx/include:$CPATH \
+    LD_LIBRARY_PATH=/usr/local/ucx/lib:$LD_LIBRARY_PATH \
+    LIBRARY_PATH=/usr/local/ucx/lib:$LIBRARY_PATH \
+    PATH=/usr/local/ucx/bin:$PATH
+
+# SLURM PMI2
+COPY --from=build /usr/local/slurm-pmi2 /usr/local/slurm-pmi2
+
+# OpenMPI
+RUN apt-get update -y && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        hwloc \
+        openssh-client && \
+    rm -rf /var/lib/apt/lists/*
+COPY --from=build /usr/local/openmpi /usr/local/openmpi
+ENV LD_LIBRARY_PATH=/usr/local/openmpi/lib:$LD_LIBRARY_PATH \
+    PATH=/usr/local/openmpi/bin:$PATH
+
+COPY --from=build /usr/local/bin/mpi_bandwidth /usr/local/bin/mpi_bandwidth

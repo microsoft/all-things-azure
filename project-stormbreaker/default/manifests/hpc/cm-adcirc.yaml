@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cm-adcirc
+data:
+  entrypoint.sh: |-
+    #!/usr/bin/bash -l
+    mkdir -p /var/run/sshd; /usr/sbin/sshd
+    TEST_DIR="/mnt/output/"    
+    LD_LIBRARY_PATH="/home/stormbreaker/install/lib"
+    
+    SLOTS=94 # pe:4 * 16 (16 cores)
+    NP=280   # SLOTS * Number of VMs
+        
+    cd /mnt/scratchpad
+    rm -rf TEST_2.zip run.sh TEST_2
+    cp $TEST_DIR/{run.sh,TEST_2.zip} /mnt/scratchpad
+    unzip TEST_2.zip
+    cd TEST_2/
+
+    adcprep --np $(($NP-10)) --partmesh > adcprep.txt
+    adcprep --np $(($NP-10)) --prepall  >> adcprep.txt
+    #mpiexec -x LD_LIBRARY_PATH --allow-run-as-root -np $NP -npernode $SLOTS  --map-by L3CACHE:PE=6 -hostfile /etc/volcano/mpiworker.host -x UCX_NET_DEVICES=mlx5_0:1 -mca ucx ^vader,tcp,openib,uct -x UCX_TLS=rc padcirc -W 10 > padcirc_log.txt
+    mpiexec -x LD_LIBRARY_PATH --allow-run-as-root -np $NP -npernode $SLOTS  --mca plm_rsh_args "-p 2222" --map-by core -hostfile /etc/volcano/mpiworker.host -x UCX_NET_DEVICES=mlx5_0:1 -mca ucx ^vader,tcp,openib,uct -x UCX_TLS=rc padcirc -W 10  > padcirc.log
+    #mpiexec --allow-run-as-root -np $NP -npernode $SLOTS --mca plm_rsh_args "-p 2222" -hostfile /etc/volcano/mpiworker.host -x UCX_TLS=tcp -x UCX_NET_DEVICES=eth0 -mca coll_hcoll_enable 0 padcirc > padcirc_log.txt

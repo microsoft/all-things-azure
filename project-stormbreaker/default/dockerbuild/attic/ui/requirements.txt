@@ -1,0 +1,4 @@
+azure-servicebus
+azure-identity
+python-dotenv
+streamlit

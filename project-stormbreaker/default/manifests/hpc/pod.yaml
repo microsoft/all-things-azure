@@ -1,0 +1,49 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: podman-in-a-pod
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: agentpool
+            operator: In
+            values:
+            - adcirchpc
+  containers:
+    - image:  stormbreakeracrdc.azurecr.io/adcirc-hpc:55.02.openmpi-ucx-rc-1
+      name: podman-in-a-pod
+      securityContext:
+        privileged: true
+        capabilities:
+          add: ["IPC_LOCK", "CAP_SYS_ADMIN", "CAP_MKNOD"]
+      command:
+      - /bin/sh
+      - -c
+      - |
+        apt update
+        apt install -y vim python3-pip podman
+        pip install hpccm
+        sed -i 's/# unqualified-search-registries = \["example.com"\]/unqualified-search-registries = \["docker.io"\]/' /etc/containers/registries.conf
+        sleep 360d;
+      volumeMounts:
+        - name: input
+          mountPath: "/mnt/input"
+          readOnly: false
+        - name: output
+          mountPath: "/mnt/output"
+          readOnly: false
+        - name: scratchpad
+          mountPath: "/mnt/scratchpad"
+  volumes:
+    - name: input
+      persistentVolumeClaim:
+        claimName: pvc-input
+    - name: output
+      persistentVolumeClaim:
+        claimName: pvc-output
+    - name: scratchpad
+      persistentVolumeClaim:
+        claimName: scratchpad

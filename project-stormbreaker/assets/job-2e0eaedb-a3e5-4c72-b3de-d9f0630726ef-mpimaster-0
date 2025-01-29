@@ -1,0 +1,305 @@
+# Simulation: Guam
+# NP: 280
+# SLOTS: 94
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    scheduling.k8s.io/group-name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-2f40e3f2-7938-4274-adeb-8b2d4122fe51
+    volcano.sh/job-name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef
+    volcano.sh/job-version: "0"
+    volcano.sh/queue-name: adcirc
+    volcano.sh/task-spec: mpimaster
+    volcano.sh/template-uid: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-mpimaster
+  creationTimestamp: "2024-04-10T19:20:13Z"
+  labels:
+    volcano.sh/job-name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef
+    volcano.sh/job-namespace: default
+    volcano.sh/queue-name: adcirc
+    volcano.sh/task-spec: mpimaster
+  name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-mpimaster-0
+  namespace: default
+  ownerReferences:
+  - apiVersion: batch.volcano.sh/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Job
+    name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef
+    uid: 2f40e3f2-7938-4274-adeb-8b2d4122fe51
+  resourceVersion: "30785858"
+  uid: 03e9fa31-0520-4a05-9356-4f4338ecc478
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: agentpool
+            operator: In
+            values:
+            - adcirchpc
+    podAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: role
+            operator: In
+            values:
+            - nfs-server
+        topologyKey: kubernetes.io/hostname
+  containers:
+  - command:
+    - /bin/entrypoint.sh
+    env:
+    - name: LD_LIBRARY_PATH
+      value: /home/stormbreaker/install/lib
+    - name: VC_MPIMASTER_HOSTS
+      valueFrom:
+        configMapKeyRef:
+          key: VC_MPIMASTER_HOSTS
+          name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-svc
+    - name: VC_MPIMASTER_NUM
+      valueFrom:
+        configMapKeyRef:
+          key: VC_MPIMASTER_NUM
+          name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-svc
+    - name: VC_MPIWORKER_HOSTS
+      valueFrom:
+        configMapKeyRef:
+          key: VC_MPIWORKER_HOSTS
+          name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-svc
+    - name: VC_MPIWORKER_NUM
+      valueFrom:
+        configMapKeyRef:
+          key: VC_MPIWORKER_NUM
+          name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-svc
+    - name: VK_TASK_INDEX
+      value: "0"
+    - name: VC_TASK_INDEX
+      value: "0"
+    image: stormbreakeracrdc.azurecr.io/adcirc-hpc:55.02-rc-3.1
+    imagePullPolicy: IfNotPresent
+    lifecycle:
+      preStop:
+        exec:
+          command:
+          - /bin/sh
+          - -c
+          - cp -r /mnt/scratchpad/beta/2e0eaedb-a3e5-4c72-b3de-d9f0630726ef /mnt/output/run/beta/guam/2e0eaedb-a3e5-4c72-b3de-d9f0630726ef
+    name: mpimaster
+    ports:
+    - containerPort: 2223
+      hostPort: 2223
+      name: mpijob-port
+      protocol: TCP
+    resources: {}
+    securityContext:
+      capabilities:
+        add:
+        - IPC_LOCK
+      privileged: true
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /mnt/input
+      name: input
+    - mountPath: /mnt/output
+      name: output
+    - mountPath: /mnt/scratchpad
+      name: scratchpad
+    - mountPath: /bin/entrypoint.sh
+      name: adcirc-config
+      readOnly: true
+      subPath: entrypoint.sh
+    - mountPath: /root/.ssh
+      name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-ssh
+      subPath: .ssh
+    - mountPath: /etc/volcano
+      name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-svc
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-wj9p6
+      readOnly: true
+    workingDir: /root
+  dnsPolicy: ClusterFirstWithHostNet
+  enableServiceLinks: true
+  hostNetwork: true
+  hostname: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-mpimaster-0
+  initContainers:
+  - command:
+    - /bin/bash
+    - -c
+    - |
+      until [[ "$(kubectl get pod -l volcano.sh/job-name=job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef,volcano.sh/task-spec=mpiworker -o json | jq '.items | length')" != 0 ]]; do
+        echo "Waiting for MPI worker pods..."
+        sleep 3
+      done
+      echo "Waiting for MPI worker pods to be ready..."
+      kubectl wait pod -l volcano.sh/job-name=job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef,volcano.sh/task-spec=mpiworker --for=condition=Ready --timeout=600s
+    env:
+    - name: VC_MPIMASTER_HOSTS
+      valueFrom:
+        configMapKeyRef:
+          key: VC_MPIMASTER_HOSTS
+          name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-svc
+    - name: VC_MPIMASTER_NUM
+      valueFrom:
+        configMapKeyRef:
+          key: VC_MPIMASTER_NUM
+          name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-svc
+    - name: VC_MPIWORKER_HOSTS
+      valueFrom:
+        configMapKeyRef:
+          key: VC_MPIWORKER_HOSTS
+          name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-svc
+    - name: VC_MPIWORKER_NUM
+      valueFrom:
+        configMapKeyRef:
+          key: VC_MPIWORKER_NUM
+          name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-svc
+    - name: VK_TASK_INDEX
+      value: "0"
+    - name: VC_TASK_INDEX
+      value: "0"
+    image: mcr.microsoft.com/oss/kubernetes/kubectl:v1.26.3
+    imagePullPolicy: IfNotPresent
+    name: wait-for-workers
+    resources: {}
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /root/.ssh
+      name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-ssh
+      subPath: .ssh
+    - mountPath: /etc/volcano
+      name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-svc
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-wj9p6
+      readOnly: true
+  nodeName: aks-adcirchpc-73389886-vmss000000
+  preemptionPolicy: PreemptLowerPriority
+  priority: 0
+  restartPolicy: Never
+  schedulerName: volcano
+  securityContext: {}
+  serviceAccount: sa-mpi-worker-view
+  serviceAccountName: sa-mpi-worker-view
+  subdomain: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef
+  terminationGracePeriodSeconds: 30
+  tolerations:
+  - effect: NoExecute
+    key: node.kubernetes.io/not-ready
+    operator: Exists
+    tolerationSeconds: 300
+  - effect: NoExecute
+    key: node.kubernetes.io/unreachable
+    operator: Exists
+    tolerationSeconds: 300
+  volumes:
+  - name: input
+    persistentVolumeClaim:
+      claimName: pvc-input
+  - name: output
+    persistentVolumeClaim:
+      claimName: pvc-output
+  - name: scratchpad
+    persistentVolumeClaim:
+      claimName: scratchpad
+  - configMap:
+      defaultMode: 448
+      name: cm-adcirc-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef
+    name: adcirc-config
+  - name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-ssh
+    secret:
+      defaultMode: 384
+      items:
+      - key: id_rsa
+        path: .ssh/id_rsa
+      - key: id_rsa.pub
+        path: .ssh/id_rsa.pub
+      - key: authorized_keys
+        path: .ssh/authorized_keys
+      - key: config
+        path: .ssh/config
+      secretName: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-ssh
+  - configMap:
+      defaultMode: 420
+      name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-svc
+    name: job-2e0eaedb-a3e5-4c72-b3de-d9f0630726ef-svc
+  - name: kube-api-access-wj9p6
+    projected:
+      defaultMode: 420
+      sources:
+      - serviceAccountToken:
+          expirationSeconds: 3607
+          path: token
+      - configMap:
+          items:
+          - key: ca.crt
+            path: ca.crt
+          name: kube-root-ca.crt
+      - downwardAPI:
+          items:
+          - fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+            path: namespace
+status:
+  conditions:
+  - lastProbeTime: null
+    lastTransitionTime: "2024-04-10T19:20:16Z"
+    reason: PodCompleted
+    status: "True"
+    type: Initialized
+  - lastProbeTime: null
+    lastTransitionTime: "2024-04-10T22:00:11Z"
+    reason: PodCompleted
+    status: "False"
+    type: Ready
+  - lastProbeTime: null
+    lastTransitionTime: "2024-04-10T22:00:11Z"
+    reason: PodCompleted
+    status: "False"
+    type: ContainersReady
+  - lastProbeTime: null
+    lastTransitionTime: "2024-04-10T19:20:14Z"
+    status: "True"
+    type: PodScheduled
+  containerStatuses:
+  - containerID: containerd://a418a97e8a19eeb637097b1f258a02fc95d11d69cc615ee9ec4357d41d87ff3f
+    image: stormbreakeracrdc.azurecr.io/adcirc-hpc:55.02-rc-3.1
+    imageID: stormbreakeracrdc.azurecr.io/adcirc-hpc@sha256:af03b600d1bbd76e349a47a1ba6d6838cf46710468b16cee0ba870d18454f9ca
+    lastState: {}
+    name: mpimaster
+    ready: false
+    restartCount: 0
+    started: false
+    state:
+      terminated:
+        containerID: containerd://a418a97e8a19eeb637097b1f258a02fc95d11d69cc615ee9ec4357d41d87ff3f
+        exitCode: 0
+        finishedAt: "2024-04-10T22:00:10Z"
+        reason: Completed
+        startedAt: "2024-04-10T19:20:16Z"
+  hostIP: 10.255.1.10
+  initContainerStatuses:
+  - containerID: containerd://23c2f835ba79d23697d621680f8358ebdcedca4ac3983e93cd5c9eaf0ccc71ca
+    image: mcr.microsoft.com/oss/kubernetes/kubectl:v1.26.3
+    imageID: mcr.microsoft.com/oss/kubernetes/kubectl@sha256:9eea4dd8be52db29ebb57cf95b73d261914378f6f3ab435a470dc67d3320dfa9
+    lastState: {}
+    name: wait-for-workers
+    ready: true
+    restartCount: 0
+    started: false
+    state:
+      terminated:
+        containerID: containerd://23c2f835ba79d23697d621680f8358ebdcedca4ac3983e93cd5c9eaf0ccc71ca
+        exitCode: 0
+        finishedAt: "2024-04-10T19:20:15Z"
+        reason: Completed
+        startedAt: "2024-04-10T19:20:14Z"
+  phase: Succeeded
+  podIP: 10.255.1.10
+  podIPs:
+  - ip: 10.255.1.10
+  qosClass: BestEffort
+  startTime: "2024-04-10T19:20:14Z"

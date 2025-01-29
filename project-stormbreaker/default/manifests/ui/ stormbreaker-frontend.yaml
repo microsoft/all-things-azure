@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stormbreaker-frontend-service
+spec:
+  selector:
+    app: stormbreaker-frontend
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stormbreaker-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stormbreaker-frontend
+  template:
+    metadata:
+      labels:
+        app: stormbreaker-frontend
+        #azure.workload.identity/use: "true"
+      #annotations:
+      #  azure.workload.identity/inject-proxy-sidecar: "true"
+    spec:
+      #serviceAccountName: workload-identity-sa
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: agentpool
+                    operator: In
+                    values:
+                      - system
+      containers:
+        - name: stormbreaker-frontend
+          image: stormbreakeracrdc.azurecr.io/misc/react-ui:1.2
+          ports:
+            - containerPort: 3000
+          command: ["npm", "start"]
+          envFrom:
+            - configMapRef:
+                name: env-config
+          resources:
+            limits:
+              cpu: "2"
+              memory: 2Gi
+            requests:
+              cpu: "1"
+              memory: 1Gi

@@ -1,0 +1,25 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: hec-ras
+spec:
+  tolerations:
+    - key: layer
+      operator: Equal
+      value: hec-ras
+      effect: NoSchedule
+  containers:
+    - image: stormbreakeracrdc.azurecr.io/hec-ras-6.1-ubi-minimal:8.9-1108.1705420507
+      name: hec-ras
+      command:
+        - run.sh
+        - -x
+        - geoprem
+      volumeMounts:
+        - name: blob01
+          mountPath: "/mnt/"
+          readOnly: false
+  volumes:
+    - name: blob01
+      persistentVolumeClaim:
+        claimName: pvc-blob

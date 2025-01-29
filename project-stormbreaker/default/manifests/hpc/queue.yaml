@@ -1,0 +1,10 @@
+apiVersion: scheduling.volcano.sh/v1beta1
+kind: Queue
+metadata:
+  name: adcirc
+spec:
+  weight: 100
+  reclaimable: false
+  capability:
+    cpu: 280 # each ADCIRC node has 120 vCPU (standard_HB120v3). 
+             # Letting k8s use dd1 and the rest for ADCIRC

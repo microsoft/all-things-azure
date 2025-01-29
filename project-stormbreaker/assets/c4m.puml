@@ -1,0 +1,147 @@
+@startuml kubernetes
+
+!pragma revision 1
+
+footer Stormbreaker
+scale max 2048 width
+
+skinparam nodesep 10
+skinparam ranksep 10
+
+' C4M
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+' Azure
+!define AzurePuml https://raw.githubusercontent.com/RicardoNiepel/Azure-PlantUML/release/2-2/dist
+!define AzurePuml https://raw.githubusercontent.com/plantuml-stdlib/Azure-PlantUML/master/dist
+
+!includeurl AzurePuml/AzureCommon.puml
+'!includeurl AzurePuml/AzureSimplified.puml
+
+!includeurl AzurePuml/Containers/AzureContainerRegistry.puml
+!includeurl AzurePuml/Compute/AzureDisk.puml
+!includeurl AzurePuml/Integration//AzureServiceBusQueue.puml
+!includeurl AzurePuml/Storage/AzureDataLakeStorage.puml
+
+' Kubernetes
+!define KubernetesPuml https://raw.githubusercontent.com/dcasati/kubernetes-PlantUML/master/dist
+
+!includeurl KubernetesPuml/kubernetes_Common.puml
+!includeurl KubernetesPuml/kubernetes_Context.puml
+
+!includeurl KubernetesPuml/OSS/KubernetesApi.puml
+!includeurl KubernetesPuml/OSS/KubernetesSched.puml
+!includeurl KubernetesPuml/OSS/KubernetesPod.puml
+!includeurl KubernetesPuml/OSS/KubernetesPod.puml
+!includeurl KubernetesPuml/OSS/KubernetesSts.puml
+!includeurl KubernetesPuml/OSS/KubernetesPv.puml
+!includeurl KubernetesPuml/OSS/KubernetesPvc.puml
+
+' nodepool
+!define Nodepool(e_alias, e_label) rectangle "==e_label" <<nodepool>> as e_alias
+!define Nodepool(e_alias, e_label, e_type) rectangle "==e_label\n<size:TECHN_FONT_SIZE>[e_type]</size>" <<nodepool>> as e_alias
+
+!define Nodepool_Boundary(e_alias, e_label) Nodepool(e_alias, e_label, "nodepool")
+
+LAYOUT_WITH_LEGEND()
+
+actor User as User
+
+'left to right direction
+
+' Azure Components
+Boundary(azure, " ") {
+    AzureDataLakeStorage(adls, "ADLS", "Canada Central")
+    AzureContainerRegistry(acr, "Azure Container Registry", "Canada Central")
+
+    Boundary(queue, "Azure Service Bus") {
+        AzureServiceBusQueue(queueDelete, "Delete", "Canada Central")
+        AzureServiceBusQueue(queueDispatch, "Dispatch", "Canada Central")
+        AzureServiceBusQueue(queueRunning, "Running", "Canada Central")
+    }
+}
+
+' Kubernetes Components
+Cluster_Boundary(cluster, "Azure Kubernetes Cluster") {
+    Boundary(controlPlane, "Kubernetes Control Plane") {
+        KubernetesApi(KubernetesApi, "Kubernetes API", "")
+        KubernetesSched(KubernetesSched, "Kubernetes Scheduler", "")
+    }
+        
+    ' scratchpad
+    Boundary(scratchpad, "Scratchpad") {
+    KubernetesPv(KubernetesPv, "pv-scratchpad", "nfs-server.privatelink.azurecr.io:/nvme")
+    KubernetesPvc(KubernetesPvc, "scratchpad", "ReadWriteMany")
+    }
+
+    ' System Node Pool
+    Nodepool_Boundary(npSystem, "System") {
+        KubernetesPod(KEDAremover, "Remover", "KEDA")
+        KubernetesPod(KEDAdispatcher, "Dispatcher", "KEDA")
+        KubernetesPod(KEDAComplete, "Complete", "KEDA")
+        KubernetesPod(frontend, "FRONTEND", "stormbreaker-frontend")
+        KubernetesPod(backend, "BACKEND", "stormbreaker-backend")
+    }
+    ' ADCIRCHPC Node Pool
+    Nodepool_Boundary(npAdcirc, "ADCIRCHPC") {
+        Node_Boundary(node1, "HBv2-120rs") {            
+            KubernetesPod(KubernetesMPImaster, "job-mpimaster-0", "HBv2-120rs")
+            Boundary(nfs, "NFS") {
+                KubernetesSts(nfs_server, "nfs-server", "nfs-server.privatelink.azurecr.io")
+                AzureDisk(nvme, "nvme", " ")
+            }
+        }
+        
+        Node_Boundary(node2, "HBv2-120rs") { 
+            KubernetesPod(KubernetesMPIworker0, "job-mpiworker-0", "HBv2-120rs")
+        }
+
+        Node_Boundary(node3, "HBv2-120rs") { 
+            KubernetesPod(KubernetesMPIworker1, "job-mpiworker-1", "HBv2-120rs")
+        }
+    }
+}
+
+Rel_U(cluster, acr, "pulls image for each model")
+
+Rel(User, frontend, "HTTP", "ASYNC")
+Rel_U(frontend, backend, "HTTP", "ASYNC")
+
+' task deletion
+Rel(backend, queueDelete, " ")
+Rel_Neighbor(queueDelete, KEDAremover, " ")
+Rel(KEDAremover, KubernetesApi, "sends volcano job for deletion")
+
+' task creation
+Rel(backend, queueDispatch, " ")
+Rel(KEDAdispatcher, KubernetesApi, "sends volcano job for creation")
+Rel_Neighbor(queueDispatch, KEDAdispatcher, " ")
+Rel(KEDAdispatcher, queueRunning, " ")
+
+' task compeltion
+Rel(KEDAComplete, ADLS, "reads from")
+
+' volcano jobs
+Rel(KubernetesApi, KubernetesSched, "schedules job based on node selector")
+Rel(KubernetesSched, npAdcirc, "schedules job on nodes")
+Rel(KubernetesMPImaster, KubernetesMPIworker0, " ")
+Rel(KubernetesMPImaster, KubernetesMPIworker1, "sends mpi job to worker node")
+
+' ADLS
+Rel(KubernetesMPImaster, adls, "read/write data to the Input/Output")
+Rel(KubernetesMPIworker0, adls, "writes to")
+Rel(KubernetesMPIworker1, adlEs, "writes to ")
+
+Rel_Neighbor(KEDAdispatcher, adls, "writes to")
+
+' nfs
+Rel(nfs_server, nvme, "/exports/nvme")
+Rel_U(scratchpad, nfs, " ")
+
+' scratchpad
+Rel(KubernetesPvc, KubernetesPv, " ")
+Rel(KubernetesMPImaster, KubernetesPvc, " ")
+Rel(KubernetesMPIworker0, KubernetesPvc, "/mnt/scratchpad")
+Rel(KubernetesMPIworker1, KubernetesPvc, " ")
+
+@enduml

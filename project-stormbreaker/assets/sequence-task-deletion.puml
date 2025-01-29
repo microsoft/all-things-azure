@@ -1,0 +1,32 @@
+@startuml
+title Task Deletion
+
+actor User
+
+participant "REACT FRONTEND" as FRONTEND
+participant "DJANGO BACKEND" as BACKEND
+
+participant "Service Bus Queue:\nDelete" as SB_Delete
+participant "KEDA:\nservicebus-remover" as KEDA_Remover
+participant "Service Bus Queue:\nRunning" as SB_Running
+
+participant "Kubernetes API" as K8S_API
+
+autonumber
+hide footbox
+
+User -> FRONTEND: deletes task
+FRONTEND -> BACKEND: sends task to BACKEND
+BACKEND -> SB_Delete: sends task to queue
+KEDA_Remover -> SB_Delete: removes task from queue
+KEDA_Remover -> SB_Running: removes task from queue
+
+KEDA_Remover -> K8S_API: sends volcano job for deletion
+
+loop
+UI -> SB_Running: reads tasks
+UI -> User: shows running tasks
+end
+
+@enduml
+

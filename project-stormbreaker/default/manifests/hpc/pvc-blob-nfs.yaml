@@ -1,0 +1,25 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-input
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  volumeName: pv-input
+  storageClassName: azureblob-nfs-premium
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-output
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  volumeName: pv-output
+  storageClassName: azureblob-nfs-premium

@@ -29,7 +29,7 @@ Below are a few featured blog posts from *All Things Azure* and the correspondin
   📌 *Resources*: Check out the [`project-stormbreaker/`](./project-stormbreaker) directory for Terraform scripts, Kubernetes manifests, and documentation to reproduce the simulation environment. These resources correspond to the blog’s scenario of running complex **HPC workloads on Azure** at scale, enabling you to follow along with the deployment steps.
 
 - **Visualize ROI of GitHub Copilot Usage** – *(All Things Azure blog post by Xuefeng Yin)*. This guide explains how to visualize the return on investment (ROI) of using GitHub Copilot in your projects.  
-  📌 *Submodule*: The [`visualize-roi-of-ghcp-usage/`](./visualize-roi-of-ghcp-usage) directory is a submodule pointing to the original repository at `https://github.com/satomic/copilot-usage-advanced-dashboard`. It contains tools and dashboards to help you measure and visualize the impact of GitHub Copilot on your development workflow. *(Read the full article on the blog for detailed instructions and insights.)*
+  📌 *Submodule*: The [`visualize-roi-of-ghcp-usage`](https://github.com/satomic/copilot-usage-advanced-dashboard) directory is a submodule pointing to the original repository. It contains tools and dashboards to help you measure and visualize the impact of GitHub Copilot on your development workflow. *(Read the full article on the blog for detailed instructions and insights.)*
 
 > **Note:** More samples will be added over time as new posts are published on the *All Things Azure* blog. Be sure to watch ★ this repository for updates. We aim to keep the code up-to-date with Azure’s evolving services and best practices.
 

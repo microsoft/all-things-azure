@@ -7,4 +7,8 @@
 - Agents can collaborate, debate, and provide insights.
 - Demonstrates practical use of agent-based AI in philosophical and decision-making contexts.
 
-![Philosopher Agents](Images/PhilosopherAgents.jpg)
+## Article
+Read more about this project in our [blog post](https://devblogs.microsoft.com/all-things-azure/agentic-philosophers/).
+
+[![Philosopher Agents](https://devblogs.microsoft.com/all-things-azure/wp-content/uploads/sites/83/2024/12/DiningPhilosophers2.jpeg)](https://devblogs.microsoft.com/all-things-azure/agentic-philosophers/)
+

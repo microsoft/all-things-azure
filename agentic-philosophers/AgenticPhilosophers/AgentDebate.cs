@@ -9,6 +9,7 @@ using OpenAI.Files;
 using OpenAI.VectorStores;
 using Resources;
 using dotenv.net;
+using System.ClientModel;
 
 public class AgentDebate
 {
@@ -46,8 +47,23 @@ public class AgentDebate
         var model = Environment.GetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT_NAME") 
             ?? throw new InvalidOperationException("Environment variable 'AZURE_OPENAI_DEPLOYMENT_NAME' is not set.");            
 
+        var apiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_APIKEY") 
+            ?? throw new InvalidOperationException("Environment variable 'AZURE_OPENAI_APIKEY' is not set.");            
+
         // Create a kernel for the Chat Completion agents
-        var kernel = KernelFactory.CreateKernel(model, endpoint);        
+        // Use of Builder Pattern - recommended in newer versions of Semantic Kernel:
+        // Explicitly configures an Azure OpenAI ChatCompletion service by passing the model, endpoint, and API key.
+        // This new approach is preferred in recent Semantic Kernel releases because it ensures the correct service type
+        // (chat vs. text completion) and proper credentials are used, avoiding setup issues in older or environment-dependent methods.
+        // For more details on using the builder approach, see:
+        // https://github.com/microsoft/semantic-kernel/blob/main/dotnet/docs/KernelBuilder.md
+        var kernelBuilder = Kernel.CreateBuilder().AddAzureOpenAIChatCompletion(model, endpoint, apiKey);
+        var kernel = kernelBuilder.Build();
+
+        // Replaced Factory Method - older approach in Semantic Kernel:
+        // Relies on KernelFactory.CreateKernel, which typically uses environment variables or default config.
+        // If those variables/config are incorrect or missing, it can result in authentication failures (401 Unauthorized).
+        //var kernel = KernelFactory.CreateKernel(model, endpoint);         
 
         // Define the agent for Socrates
         var socratesAgentPrompt = await File.ReadAllTextAsync("PromptTemplates/SocratesAgent.yaml");
@@ -65,7 +81,7 @@ public class AgentDebate
             Kernel = kernel
         };
 
-        OpenAIClientProvider provider = OpenAIClientProvider.ForAzureOpenAI(new DefaultAzureCredential(), new Uri(endpoint));
+        OpenAIClientProvider provider = OpenAIClientProvider.ForAzureOpenAI(new ApiKeyCredential(apiKey), new Uri(endpoint));
 
         // Upload file
         OpenAIFileClient fileClient = provider.Client.GetOpenAIFileClient();
